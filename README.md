@@ -19,6 +19,7 @@ Command line script used to analyze git commits/tags, parse out Jira ticket IDs,
 | --repo-path | Path to git repository |
 | --release-tag | Most recent tag, start bound for commits included in release. |
 | --previous-tag | Oldest tag, end bound for commits included in release. |
+| --jira-base-url | Root of your jira URL, like such as `https://traackr.atlassian.net` |
 | --jira-username | Login for Jira REST API. |
 | --jira-password | Password for Jira REST API. |
 | --jira-project | Jira project to use. |
@@ -34,6 +35,7 @@ Command line script used to analyze git commits/tags, parse out Jira ticket IDs,
        --repo-path ~/skynet/
        --release-tag rev-1.50
        --previous-tag rev-1.49
+       --jira-base-url cyberdyne-systems.atlassian.net
        --jira-username cyberdyne
        --jira-password cyberdyne1997
        --jira-project SNAI

@@ -8,16 +8,13 @@ import json
 import sys
 from datetime import datetime
 
-JIRA_BASE_URL = 'https://traackr.atlassian.net'
-API_1_URL = JIRA_BASE_URL + '/rest/agile/1.0'
-GREENHOPPER_1_URL = JIRA_BASE_URL + '/rest/greenhopper/1.0'
-
 def parse_args():
     """ I just wanted these near the top of the file. """
     parser = argparse.ArgumentParser()
     parser.add_argument('--repo-path', required=True, help='Path to the repo being released.')
     parser.add_argument('--release-tag', required=True, help='New tag for this release.')
     parser.add_argument('--previous-tag', required=True, help='Tag for the last release.')
+    parser.add_argument('--jira-base-url', required=True, help='Root of your jira URL, like \'https://traackr.atlassian.net\'')
     parser.add_argument('--jira-username', required=True, help='Jira username.')
     parser.add_argument('--jira-password', required=True, help='Jira password.')
     parser.add_argument('--jira-project', required=True, default='CORE', help='Project to create fix version in.')
@@ -123,10 +120,10 @@ def group_commits_by_pattern(regex_pattern, commit_messages):
     return commit_dict, unknown_commits
 
 
-def validate_jira_id(jira_id, allow_multiple_fix_versions, jira_username, jira_password):
+def validate_jira_id(jira_id, allow_multiple_fix_versions, base_url, jira_username, jira_password):
     """ Throw an exception if the jira_id is invalid. Check jira to verify existence, done state and fix version. """
 
-    request_url = JIRA_BASE_URL + '/rest/api/2/issue/' + jira_id
+    request_url = base_url + '/rest/api/2/issue/' + jira_id
     response = requests.get(request_url, auth=(jira_username, jira_password))
     if response.status_code == 404:
         message = 'Jira ticket not found.'
@@ -147,7 +144,7 @@ def validate_jira_id(jira_id, allow_multiple_fix_versions, jira_username, jira_p
         raise ValueError(message)
 
 
-def create_fix_version(fix_version_name, jira_project, jira_username, jira_password):
+def create_fix_version(fix_version_name, jira_project, base_url, jira_username, jira_password):
     """ Create a fix version in given project with given name, returns the fix version id or raises an exception. """
     post_data = {
         'name': fix_version_name,
@@ -157,7 +154,7 @@ def create_fix_version(fix_version_name, jira_project, jira_username, jira_passw
     }
 
     response = requests.post(
-        JIRA_BASE_URL + '/rest/api/2/version',
+        base_url + '/rest/api/2/version',
         headers={'content-type': 'application/json'},
         auth=(jira_username, jira_password),
         data=json.dumps(post_data))
@@ -168,7 +165,7 @@ def create_fix_version(fix_version_name, jira_project, jira_username, jira_passw
     return status_response_json['id']
 
 
-def add_fix_version_to_ticket(jira_id, fix_version_id, jira_username, jira_password):
+def add_fix_version_to_ticket(jira_id, fix_version_id, base_url, jira_username, jira_password):
     """ Add fix version to jira ticket. """
     post_data = {
         'update': {
@@ -183,7 +180,7 @@ def add_fix_version_to_ticket(jira_id, fix_version_id, jira_username, jira_passw
     }
 
     response = requests.put(
-        JIRA_BASE_URL + '/rest/api/2/issue/' + jira_id,
+        base_url + '/rest/api/2/issue/' + jira_id,
         headers={'content-type': 'application/json'},
         auth=(jira_username, jira_password),
         data=json.dumps(post_data))
@@ -226,7 +223,7 @@ def main():
     print('\nValidating {} jira tickets: {}'.format(len(grouped_commits), ', '.join(grouped_commits.keys())))
     for jira_id, commit_list in grouped_commits.items():
         try:
-            validate_jira_id(jira_id, args.allow_multiple_versions, args.jira_username, args.jira_password)
+            validate_jira_id(jira_id, args.allow_multiple_versions, args.jira_base_url, args.jira_username, args.jira_password)
             valid_tickets[jira_id] = commit_list
         except ValueError as e:
             invalid_tickets[jira_id] = (commit_list, str(e))
@@ -259,12 +256,12 @@ def main():
         sys.exit(-1)
 
     # Create fix version.
-    fix_version_id = create_fix_version(release_name, args.jira_project, args.jira_username, args.jira_password)
+    fix_version_id = create_fix_version(release_name, args.jira_project, args.jira_base_url, args.jira_username, args.jira_password)
 
     # Apply fix version to tickets.
     for item in valid_tickets.items():
         try:
-            add_fix_version_to_ticket(item[0], fix_version_id, args.jira_username, args.jira_password)
+            add_fix_version_to_ticket(item[0], fix_version_id, args.jira_base_url, args.jira_username, args.jira_password)
         except ValueError as e:
             print('Failure setting fix version for {}: {}'.format(item[0], str(e)))
 
