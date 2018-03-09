@@ -8,23 +8,43 @@ import json
 import sys
 from datetime import datetime
 
+
 def parse_args():
-    """ I just wanted these near the top of the file. """
+    """ Parse args and perform additional validation/initialization of computed arguments. """
     parser = argparse.ArgumentParser()
+    parser.add_argument('--app', required=False, help='Automates setting "--release-tag <app>-<timestamp>" and "--previous-tag <app>-*". ')
     parser.add_argument('--repo-path', required=True, help='Path to the repo being released.')
-    parser.add_argument('--release-tag', required=True, help='New tag for this release.')
-    parser.add_argument('--previous-tag', required=True, help='Tag for the last release.')
+    parser.add_argument('--release-name', help='Release name to use in Jira, if not provided the --release-tag is used, or if --app is present a computed <app>-<date> is used.')
+    parser.add_argument('--release-tag', required=False, help='Most recent tag for this release, if wildcards are included will use the most recent match. If not present the most recent commit will be used.')
+    parser.add_argument('--previous-tag', required=False, help='Tag for the last release, if wildcards are included will use the most recent match. It is required if --app is not specified.')
     parser.add_argument('--jira-base-url', required=True, help='Root of your jira URL, like \'https://traackr.atlassian.net\'')
     parser.add_argument('--jira-username', required=True, help='Jira username.')
     parser.add_argument('--jira-password', required=True, help='Jira password.')
     parser.add_argument('--jira-project', required=True, default='CORE', help='Project to create fix version in.')
-    parser.add_argument('--assume-yes', default=False, action='store_true', help='If prompted to continue, assume yes (i.e. there were invalid tickets, would you like to continue tagging valid tickets?).')
     parser.add_argument('--commit-pattern', default='(?P<key>[\w]*-[\d]*)[ :-](?P<value>.*)', help='Regex pattern used to group commits, <key> and <value> identifiers may be used to specify group order. For example: \'(?P<key>CORE-[\d]*): (?P<value>.*)\' or \'(CORE-[\d]*: (.*)\' could be used for CORE.')
-    parser.add_argument('--release-name', help='Release name to use in Jira, if not provided the releaseTag is used.')
-    parser.add_argument('--allow-multiple-versions', default=False, help='For some issues there may be changes in multiple repos, if you want a fix version per-repo use this flag.')
+    parser.add_argument('--assume-yes', default=False, action='store_true', help='If prompted to continue, assume yes (i.e. there were invalid tickets, would you like to continue tagging valid tickets?).')
+    parser.add_argument('--allow-multiple-versions', default=False, help='For some issues there may be changes in multiple applications, if you want a fix version per app use this flag.')
+    parser.add_argument('--create-tag', required=False, action='store_true', help='Causes a new tag to be created using the value of --app and a timestamp.')
     parser.add_argument('--dry-run', default=True, help='Do not modify any data.')
 
-    return parser.parse_args()
+    args = parser.parse_args()
+
+    if args.app and args.release_tag:
+        parser.error('Ambiguous release tag, must not provide --app and --release-tag.')
+
+    if not args.app and not args.previous_tag:
+        parser.error('One of --previous-tag or --app is required.')
+
+    # Initialize tags for app.
+    if args.app:
+        # Timestamp format yyyy-mm-ddThh.mm.ssZ
+        args.release_name = args.release_name or '%s-%s' % (args.app, datetime.now().strftime('%Y-%m-%dT%H.%M.%SZ'))
+        args.previous_tag = args.previous_tag or '%s-*' % args.app
+
+    if args.create_tag and not args.app:
+        parser.error('The --create-tag option needs the --app option to get the tag name.')
+
+    return args
 
 
 # http://stackoverflow.com/a/4690655/204023
@@ -58,30 +78,6 @@ def query_yes_no(question, default="yes"):
             return valid[choice]
         else:
             print("Please respond with 'yes' or 'no' (or 'y' or 'n').\n", end='')
-
-
-def get_tags(repo, start_tag):
-    """ Sort tags by committed date and look for the start tag and the next oldest tag which follows. """
-
-    first_tag = None
-    second_tag = None
-
-    # Find tags
-    tags = repo.tags
-    sorted_tags = sorted(tags, key=lambda tag_to_sort: tag_to_sort.commit.committed_date, reverse=True)
-    for tag in sorted_tags:
-        if first_tag:
-            second_tag = tag
-            break
-        if tag.name == start_tag:
-            first_tag = tag
-
-    if not first_tag:
-        raise Exception('Could not find the start tag: {}'.format(start_tag))
-    if not second_tag:
-        raise Exception('Could not find a second tag?')
-
-    return first_tag, second_tag
 
 
 def get_commits_for_tag(repo, first_tag, second_tag):
@@ -189,16 +185,38 @@ def add_fix_version_to_ticket(jira_id, fix_version_id, base_url, jira_username, 
         raise ValueError('Failed to add fix version to {}. Expected status 204, received {}'.format(jira_id, response.status_code))
 
 
+def resolve_tag(repo, tag):
+    """ Given a tag with optional wildcards, returns the most recent match. """
+
+    if not tag:
+        return ""
+
+    # Find tags
+    tags = repo.tags
+    sorted_tags = sorted(tags, key=lambda tag_to_sort: tag_to_sort.commit.committed_date, reverse=True)
+
+    p = re.compile(tag)
+    for t in sorted_tags:
+        if p.match(t.name):
+            return t
+
+    raise Exception('Could not find tag: %s' % tag)
+
+
 def main():
     args = parse_args()
 
+    print('\nrelease: %s\nprevious: %s' % (args.release_tag, args.previous_tag))
+
     repo = Repo.init(args.repo_path)
     pattern = re.compile(args.commit_pattern)
-    release_name = args.release_name if args.release_name else args.release_tag
 
     # Grab commits
-    print('\nLooking up unique issues in range: {} ... {}'.format(args.release_tag, args.previous_tag))
-    commits = get_commits_for_tag(repo, args.release_tag, args.previous_tag)
+    release = resolve_tag(repo, args.release_tag)
+    previous = resolve_tag(repo, args.previous_tag)
+    print('\nrelease: %s\nprevious: %s' % (release, previous))
+    print('\nLooking up unique issues in range: {} ... {}'.format(release, previous))
+    commits = get_commits_for_tag(repo, release, previous)
 
     # Group by pattern
     grouped_commits, unknown_commits = group_commits_by_pattern(pattern, commits)
@@ -265,8 +283,13 @@ def main():
         except ValueError as e:
             print('Failure setting fix version for {}: {}'.format(item[0], str(e)))
 
-    # 5. Release notes summary?
-    print('Done releasing {}!'.format(release_name))
+    # Create and push a tag if requested
+    if args.create_tag:
+        new_tag = repo.create_tag(args.release_name, message='Automated tag.')
+        repo.remotes.origin.push(new_tag)
+
+    # Release notes summary?
+    print('Done releasing {}!'.format(args.release_name))
 
 
 # Kick off the main function
