@@ -18,6 +18,7 @@ Command line script used to analyze git commits/tags, parse out Jira ticket IDs,
 | --app | Optional app name, this is used as a helper to set the `--release-name` and `--previous-tag`. |
 | --repo-path | Path to git repository |
 | --release-name | Optional release name to use, if not provided the `--release-tag` is used, or if `--app` is present a computed <app>-<date> is used. |
+| --description | Optional description field used for the fix version description. |
 | --release-tag | Most recent tag, start bound for commits included in release. |
 | --previous-tag | Oldest tag, end bound for commits included in release. |
 | --jira-base-url | Root of your jira URL, like such as `https://traackr.atlassian.net` |

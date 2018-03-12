@@ -15,6 +15,7 @@ def parse_args():
     parser.add_argument('--app', required=False, help='Automates setting "--release-tag <app>-<timestamp>" and "--previous-tag <app>-*". ')
     parser.add_argument('--repo-path', required=True, help='Path to the repo being released.')
     parser.add_argument('--release-name', help='Release name to use in Jira, if not provided the --release-tag is used, or if --app is present a computed <app>-<date> is used.')
+    parser.add_argument('--release-description', required=False, help='Optional description field used for the fix version.')
     parser.add_argument('--release-tag', required=False, help='Most recent tag for this release, if wildcards are included will use the most recent match. If not present the most recent commit will be used.')
     parser.add_argument('--previous-tag', required=False, help='Tag for the last release, if wildcards are included will use the most recent match. It is required if --app is not specified.')
     parser.add_argument('--jira-base-url', required=True, help='Root of your jira URL, like \'https://traackr.atlassian.net\'')
@@ -140,7 +141,7 @@ def validate_jira_id(jira_id, allow_multiple_fix_versions, base_url, jira_userna
         raise ValueError(message)
 
 
-def create_fix_version(fix_version_name, jira_project, base_url, jira_username, jira_password):
+def create_fix_version(fix_version_name, description, jira_project, base_url, jira_username, jira_password):
     """ Create a fix version in given project with given name, returns the fix version id or raises an exception. """
     post_data = {
         'name': fix_version_name,
@@ -148,6 +149,9 @@ def create_fix_version(fix_version_name, jira_project, base_url, jira_username, 
         'released': True,
         'userReleaseDate': datetime.now().strftime('%d/%B/%Y')
     }
+
+    if description:
+        post_data['description'] = description
 
     response = requests.post(
         base_url + '/rest/api/2/version',
@@ -274,7 +278,7 @@ def main():
         sys.exit(-1)
 
     # Create fix version.
-    fix_version_id = create_fix_version(release_name, args.jira_project, args.jira_base_url, args.jira_username, args.jira_password)
+    fix_version_id = create_fix_version(release_name, args.description, args.jira_project, args.jira_base_url, args.jira_username, args.jira_password)
 
     # Apply fix version to tickets.
     for item in valid_tickets.items():
