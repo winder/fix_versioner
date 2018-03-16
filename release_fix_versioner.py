@@ -42,8 +42,8 @@ def parse_args():
         args.release_name = args.release_name or '%s-%s' % (args.app, datetime.now().strftime('%Y-%m-%dT%H.%M.%SZ'))
         args.previous_tag = args.previous_tag or '%s-*' % args.app
 
-    if args.create_tag and not args.app:
-        parser.error('The --create-tag option needs the --app option to get the tag name.')
+    if not args.release_name:
+        parser.error('Missing required parameter, --app or --release-name must be provided.')
 
     return args
 
@@ -271,14 +271,14 @@ def main():
         sys.exit(-1)
 
     if args.dry_run:
-        print('Done releasing {}! (dry run exit)'.format(release_name))
+        print('Done releasing {}! (dry run exit)'.format(args.release_name))
         sys.exit(-1)
 
     if args.assume_yes is False and not query_yes_no('Would you like to continue tagging valid tickets?'):
         sys.exit(-1)
 
     # Create fix version.
-    fix_version_id = create_fix_version(release_name, args.description, args.jira_project, args.jira_base_url, args.jira_username, args.jira_password)
+    fix_version_id = create_fix_version(args.release_name, args.description, args.jira_project, args.jira_base_url, args.jira_username, args.jira_password)
 
     # Apply fix version to tickets.
     for item in valid_tickets.items():
