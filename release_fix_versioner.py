@@ -275,7 +275,8 @@ def main():
         print('=================================================\n')
         # Sort by error message:
         for ticketId, commitErrorTuple in sorted(invalid_tickets.items(), key=lambda item: item[1][1]):
-            print('{} is invalid: {}'.format(ticketId, commitErrorTuple[1]))
+            print('%s is invalid: %s' % (ticketId, commitErrorTuple[1]))
+            print('%s/browse/%s' % (args.jira_base_url, ticketId))
 
         print('')
 
