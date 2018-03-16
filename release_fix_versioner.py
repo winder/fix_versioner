@@ -22,7 +22,7 @@ def parse_args():
     parser.add_argument('--jira-username', required=True, help='Jira username.')
     parser.add_argument('--jira-password', required=True, help='Jira password.')
     parser.add_argument('--jira-project', required=True, default='CORE', help='Project to create fix version in.')
-    parser.add_argument('--commit-pattern', default='(?P<key>[\w]*-[\d]*)[ :-](?P<value>.*)', help='Regex pattern used to group commits, <key> and <value> identifiers may be used to specify group order. For example: \'(?P<key>CORE-[\d]*): (?P<value>.*)\' or \'(CORE-[\d]*: (.*)\' could be used for CORE.')
+    parser.add_argument('--commit-pattern', default='^(?P<key>[\w]*-[\d]*)[ :-](?P<value>.*)', help='Regex pattern used to group commits, <key> and <value> identifiers may be used to specify group order. For example: \'(?P<key>CORE-[\d]*): (?P<value>.*)\' or \'(CORE-[\d]*: (.*)\' could be used for CORE.')
     parser.add_argument('--assume-yes', default=False, action='store_true', help='If prompted to continue, assume yes (i.e. there were invalid tickets, would you like to continue tagging valid tickets?).')
     parser.add_argument('--allow-multiple-versions', default=False, help='For some issues there may be changes in multiple applications, if you want a fix version per app use this flag.')
     parser.add_argument('--create-tag', required=False, action='store_true', help='Causes a new tag to be created using the value of --app and a timestamp.')
