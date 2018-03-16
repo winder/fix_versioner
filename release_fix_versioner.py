@@ -30,12 +30,6 @@ def parse_args():
 
     args = parser.parse_args()
 
-    print("Dry run: ", args.dry_run)
-    if args.dry_run:
-        print("DRY RUN!!!")
-        sys.exit(-1)
-
-
     if args.app and args.release_tag:
         parser.error('Ambiguous release tag, must not provide --app and --release-tag.')
 
