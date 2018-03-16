@@ -24,11 +24,17 @@ def parse_args():
     parser.add_argument('--jira-project', required=True, default='CORE', help='Project to create fix version in.')
     parser.add_argument('--commit-pattern', default='^(?P<key>[\w]*-[\d]*)[ :-](?P<value>.*)', help='Regex pattern used to group commits, <key> and <value> identifiers may be used to specify group order. For example: \'(?P<key>CORE-[\d]*): (?P<value>.*)\' or \'(CORE-[\d]*: (.*)\' could be used for CORE.')
     parser.add_argument('--assume-yes', default=False, action='store_true', help='If prompted to continue, assume yes (i.e. there were invalid tickets, would you like to continue tagging valid tickets?).')
-    parser.add_argument('--allow-multiple-versions', default=False, help='For some issues there may be changes in multiple applications, if you want a fix version per app use this flag.')
+    parser.add_argument('--allow-multiple-versions', default=False, action='store_true', help='For some issues there may be changes in multiple applications, if you want a fix version per app use this flag.')
     parser.add_argument('--create-tag', required=False, action='store_true', help='Causes a new tag to be created using the value of --app and a timestamp.')
-    parser.add_argument('--dry-run', default=True, help='Do not modify any data.')
+    parser.add_argument('--dry-run', default=True, type=str2bool, help='Do not modify any data.')
 
     args = parser.parse_args()
+
+    print("Dry run: ", args.dry_run)
+    if args.dry_run:
+        print("DRY RUN!!!")
+        sys.exit(-1)
+
 
     if args.app and args.release_tag:
         parser.error('Ambiguous release tag, must not provide --app and --release-tag.')
@@ -47,6 +53,14 @@ def parse_args():
 
     return args
 
+# https://stackoverflow.com/a/43357954/204023
+def str2bool(v):
+    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected.')
 
 # http://stackoverflow.com/a/4690655/204023
 def query_yes_no(question, default="yes"):
