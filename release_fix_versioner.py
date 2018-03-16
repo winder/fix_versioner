@@ -288,7 +288,7 @@ def main():
             print('Failure setting fix version for {}: {}'.format(item[0], str(e)))
 
     # Create and push a tag if requested
-    if args.create_tag:
+    if args.create_tag and valid_tickets:
         new_tag = repo.create_tag(args.release_name, message='Automated tag.')
         repo.remotes.origin.push(new_tag)
 
