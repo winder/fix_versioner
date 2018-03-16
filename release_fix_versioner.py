@@ -287,7 +287,7 @@ def main():
         sys.exit(-1)
 
     # Create fix version.
-    fix_version_id = create_fix_version(args.release_name, args.description, args.jira_project, args.jira_base_url, args.jira_username, args.jira_password)
+    fix_version_id = create_fix_version(args.release_name, args.release_description, args.jira_project, args.jira_base_url, args.jira_username, args.jira_password)
 
     # Apply fix version to tickets.
     for item in valid_tickets.items():
