@@ -218,15 +218,12 @@ def resolve_tag(repo, tag):
 def main():
     args = parse_args()
 
-    print('\nrelease: %s\nprevious: %s' % (args.release_tag, args.previous_tag))
-
     repo = Repo.init(args.repo_path)
     pattern = re.compile(args.commit_pattern)
 
     # Grab commits
     release = resolve_tag(repo, args.release_tag)
     previous = resolve_tag(repo, args.previous_tag)
-    print('\nrelease: %s\nprevious: %s' % (release, previous))
     print('\nLooking up unique issues in range: {} ... {}'.format(release, previous))
     commits = get_commits_for_tag(repo, release, previous)
 
